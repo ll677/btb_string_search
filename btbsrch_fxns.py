@@ -197,19 +197,20 @@ def update_str_counts(new_counts):
     str_counts.to_csv('string_counts.csv')
 
 
-def update_checked_URL(repos):
+def update_checked_URL(repos,strlist):
     """
     Updates checked_URL.csv with the URLs and last modified date of repos examined in this
-    run of the script.
+    run of the script as well as what strings were searched for
 
     Input:
 
         repos: a dictionary indexing the repos' URLs to a tuple of their repo object (0),
             last update time (1), and DOI if present (2) ('' if not present)
+        strlist: list of strings which were searched for
     """
     checked_URL = pd.read_csv('checked_URL.csv', index_col='URL')
     for url in repos.keys():
-        checked_URL.at[url] = {'last_updated_time': repos[url][1]}
+        checked_URL.at[url] = {'last_updated_time': repos[url][1],'last_checked_strings':','.join(strlist)}
     checked_URL.to_csv('checked_URL.csv')
 
 
