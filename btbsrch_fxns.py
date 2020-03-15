@@ -35,7 +35,7 @@ def getURLs(username, password, owner,strlist):
     checked_URLs = list(df['URL'])
     checked_URLs_time = list(df['last_updated_time'])
     client = Client(str(username), str(password), str(owner))
-    checked_strs=list(df['checked_strings'])
+    checked_strs=list(df['last_checked_strings'])
 
     # alt soln. here: https://thepythoncoding.blogspot.com/2019/06/python-script-to-clone-all-repositories.html?fbclid=IwAR0a-cI-EI9cA1cgQGkiXCY9R6-5SrJq_NItKurEQ59eSVnzGCVpmKtWs7g
 
