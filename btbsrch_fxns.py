@@ -147,7 +147,7 @@ def cloneRepos(URLs):
     return repos
 
 
-def stringOccurrences(repos,strlist):
+def stringOccurrences(repos,strlist,filetypes):
     """
     Input:
 
