@@ -154,6 +154,7 @@ def stringOccurrences(repos,strlist):
         repos: a dictionary indexing the repos' URLs to a tuple of their repo object (0),
             last update time (1), and DOI if present (2) ('' if not present)
         strlist: list of strings to search
+		filetypes: list of strings of filename endings to check; i.e. ['.R','.do'] to check for R and do files
 
     Returns:
 
@@ -166,7 +167,7 @@ def stringOccurrences(repos,strlist):
     for url in URLs:
         new_counts.at[url,'DOI']=repos[url][2]
         ct = 0
-        paths = getFilePaths(repos[url][0].working_dir)
+        paths = getFilePaths(repos[url][0].working_dir,filetypes)
         for s in strlist:
             for f in paths:
                 file = open(f, 'r', errors='ignore')
@@ -279,11 +280,12 @@ def findDOI(name):
 
 # stringOccurrences helpers
 
-def getFilePaths(dir):
+def getFilePaths(dir,filetypes):
     """
     Input:
 
         dir: the path (as a string) to a directory to search
+		filetypes: list of strings of filename endings to check; i.e. ['.R','.do'] to check for R and do files
 
     Returns:
 
@@ -295,7 +297,7 @@ def getFilePaths(dir):
     paths = []
     for t in dirtree:
         for f in t[2]:
-            if f[-3:] == '.do' or f[-2:] == '.R':
+            if f[f.rfind('.'):] in filetypes:
                 paths = paths + [os.path.join(t[0], f)]
     return paths
 
