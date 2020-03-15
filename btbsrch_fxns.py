@@ -165,7 +165,6 @@ def stringOccurrences(repos,strlist,filetypes):
                               columns=['DOI']+strlist)
     URLs = repos.keys()
     for url in URLs:
-        new_counts.at[url,'DOI']=repos[url][2]
         ct = 0
         paths = getFilePaths(repos[url][0].working_dir,filetypes)
         for s in strlist:
@@ -175,6 +174,7 @@ def stringOccurrences(repos,strlist,filetypes):
                 file.close()
                 ct += count_strs(text,s)
             if ct > 0:
+                new_counts.at[url,'DOI']=repos[url][2]
                 new_counts.at[url,s] = ct
 
     return new_counts
