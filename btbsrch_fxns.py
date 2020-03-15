@@ -1,7 +1,8 @@
-# functions for the rdrobust_search script
+# functions for the btb_string_search script
 
 import os
 import git
+import numpy as np
 import pandas as pd
 import re
 import datetime as dt
@@ -11,7 +12,7 @@ from bitbucket.client import Client
 
 ##### SCRIPT FUNCTIONS #####
 
-def getURLs(username, password, owner):
+def getURLs(username, password, owner,strlist):
     """
     Returns a list of tuples of bitbuckets URLs and last_updated time that we
     want to clone. Also, generate a checked_URL.csv file that stores the URLs
@@ -21,18 +22,20 @@ def getURLs(username, password, owner):
         username: email address to login to bitbucket
         password: password to login to bit bitbucket
         owner: owner of bitucket repo, i.e. aeaverification in this case
+        strlist: list of strings needed to be searched
 
     Returns:
 
-        URLs: dict; URLs of repos to clone index tuples, 0 index is string date of last update, 1 index is string name of repo
+        URLs: dict; URLs of repos to clone index tuples.  0 index is string date of last update, 1 index is string name of repo
     """
     URLs = {}
 # change to "checked_URL_empty.csv" if you want to start from fresh
-	df = pd.read_csv("checked_URL.csv")
+    df = pd.read_csv("checked_URL.csv")
 
     checked_URLs = list(df['URL'])
     checked_URLs_time = list(df['last_updated_time'])
     client = Client(str(username), str(password), str(owner))
+    checked_strs=list(df['checked_strings'])
 
     # alt soln. here: https://thepythoncoding.blogspot.com/2019/06/python-script-to-clone-all-repositories.html?fbclid=IwAR0a-cI-EI9cA1cgQGkiXCY9R6-5SrJq_NItKurEQ59eSVnzGCVpmKtWs7g
 
@@ -46,7 +49,7 @@ def getURLs(username, password, owner):
         repos = repos+d
         pg += 1
 
-    # get URLs
+    # get repo URLs
 
     for repo in repos:
         links = repo['links']
@@ -57,13 +60,16 @@ def getURLs(username, password, owner):
         hst = raw_URL.find('//')+2
         hend = raw_URL.find('bitbucket.org')
         URL = raw_URL[:hst]+raw_URL[hend:]
-
         upd_time = repo['updated_on']
         name = repo['name']
         if URL in checked_URLs:
-            index = checked_URLs.index(URL)
-            old_time = checked_URLs_time[index]
-            if parseTime(old_time) < parseTime(upd_time):
+            ind = checked_URLs.index(URL)
+            old_time = checked_URLs_time[ind]
+            urlchecks=checked_strs[ind].split(',')
+            not_chkd=False
+            for tochk in strlist:
+                not_chkd=not_chkd or (not (tochk in urlchecks))
+            if not_chkd or parseTime(old_time) < parseTime(upd_time):
                 URLs[URL] = (upd_time, name)
         else:
             URLs[URL] = (upd_time, name)
@@ -141,53 +147,53 @@ def cloneRepos(URLs):
     return repos
 
 
-def rdrobustOccurrences(repos):
+def stringOccurrences(repos,strlist):
     """
     Input:
 
         repos: a dictionary indexing the repos' URLs to a tuple of their repo object (0),
             last update time (1), and DOI if present (2) ('' if not present)
+        strlist: list of strings to search
 
     Returns:
 
-        new_counts: A pd.DataFrame (index are URLs, col 1 is DOI if extractable, col 2 is #
-            of rdrobust occurrences)
+        new_counts: A pd.DataFrame (index are URLs, col 1 is DOI if extractable, rest of cols are string occurences)
     """
 
     new_counts = pd.DataFrame(index=pd.core.indexes.base.Index([], name='URL'),
-                              columns=['DOI', 'rdr_counts'])
+                              columns=['DOI']+strlist)
     URLs = repos.keys()
     for url in URLs:
+        new_counts.at[url,'DOI']=repos[url][2]
         ct = 0
         paths = getFilePaths(repos[url][0].working_dir)
-        for f in paths:
-            file = open(f, 'r', errors='ignore')
-            text = file.read()
-            file.close()
-            ct += count_rdrobust(text)
-        if ct > 0:
-
-            new_counts.at[url] = {'DOI': repos[url][2], 'rdr_counts': ct}
+        for s in strlist:
+            for f in paths:
+                file = open(f, 'r', errors='ignore')
+                text = file.read()
+                file.close()
+                ct += count_strs(text,s)
+            if ct > 0:
+                new_counts.at[url,s] = ct
 
     return new_counts
 
 
-def update_rdr_counts(new_counts):
+def update_str_counts(new_counts):
     """
-    Updates rdr_counts.csv in current working directory with info in new_counts. Includes
+    Updates string_counts.csv in current working directory with info in new_counts. Includes
     entries for new repos and replaces entries for old repos which have been modified.
 
     Input:
 
-        new_counts: A pd.DataFrame (index are URLs, col 1 is DOI if extractable, col 2 is #
-            of rdrobust occurrences)
+        new_counts: A pd.DataFrame (index are URLs, col 1 is DOI if extractable, rest of cols are string occurences)
 
     """
-    old_counts = pd.read_csv('rdr_counts.csv', index_col='URL')
+    old_counts = pd.read_csv('string_counts.csv', index_col='URL')
     old_counts.update(new_counts[new_counts.index.isin(old_counts.index)])
-    rdr_counts = old_counts.append(
+    str_counts = old_counts.append(
         new_counts[~new_counts.index.isin(old_counts.index)])
-    rdr_counts.to_csv('rdr_counts.csv')
+    str_counts.to_csv('string_counts.csv')
 
 
 def update_checked_URL(repos):
@@ -271,7 +277,7 @@ def findDOI(name):
         return DOI
 
 
-# rdrobustOccurrences helpers
+# stringOccurrences helpers
 
 def getFilePaths(dir):
     """
@@ -294,16 +300,17 @@ def getFilePaths(dir):
     return paths
 
 
-def count_rdrobust(text):
+def count_strs(text,s):
     """
     Input:
 
         text: string to parse
+        s: string to search for
 
     Returns:
 
-        count: occurrances of rdrobust in the text
+        count: occurrances of string s in the text
     """
 
-    count = sum(1 for i in re.finditer('rdrobust', text))
+    count = sum(1 for i in re.finditer(s, text))
     return count
