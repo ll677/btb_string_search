@@ -13,3 +13,6 @@
 * btbsrch_test.py: test script for btbsrch_fxns.py
 * string_counts.csv: column A contains URLs of papers with code containing specified strings to search for, DOIs only present if extractable from repo name
 * checked_URL.csv: column A contains URL of checked repo, column B contains date of repo's last update
+
+# Notes:
+* The script btb_string_search.py will create a directory "repos" within the working directory and clone a possibly large number of repos into it (670 at time of writing).
